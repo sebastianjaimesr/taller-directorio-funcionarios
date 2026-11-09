@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Directorio de funcionarios</title>
+	<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+	<header class="encabezado">
+		<h1>Directorio de funcionarios</h1>
+	</header>
+
+	<main class="contenedor">
+		<div id="mensaje" class="mensaje oculto" role="status" aria-live="polite"></div>
+
+		<section class="tarjeta">
+			<h2 id="titulo-formulario">Registrar funcionario</h2>
+			<form id="formulario" novalidate>
+				<input type="hidden" id="id">
+				<div class="campos">
+					<label>Nombre *
+						<input type="text" id="nombre" maxlength="120" required>
+					</label>
+					<label>Cargo *
+						<input type="text" id="cargo" maxlength="120" required>
+					</label>
+					<label>Departamento *
+						<input type="text" id="departamento" maxlength="120" required>
+					</label>
+					<label>Teléfono
+						<input type="text" id="telefono" maxlength="30">
+					</label>
+				</div>
+				<div class="acciones">
+					<button type="submit" id="btn-guardar" class="primario">Registrar</button>
+					<button type="button" id="btn-limpiar">Limpiar</button>
+				</div>
+			</form>
+		</section>
+
+		<section class="tarjeta">
+			<h2>Buscar</h2>
+			<div class="busquedas">
+				<form id="form-id" class="busqueda">
+					<label>Por ID
+						<input type="number" id="buscar-id" min="1">
+					</label>
+					<button type="submit">Consultar</button>
+				</form>
+				<form id="form-nombre" class="busqueda">
+					<label>Por nombre
+						<input type="text" id="buscar-nombre" placeholder="Ej: ana">
+					</label>
+					<button type="submit">Buscar</button>
+				</form>
+				<form id="form-departamento" class="busqueda">
+					<label>Por departamento
+						<input type="text" id="buscar-departamento" placeholder="Ej: Contabilidad">
+					</label>
+					<button type="submit">Filtrar</button>
+				</form>
+			</div>
+			<button type="button" id="btn-todos">Ver listado completo</button>
+		</section>
+
+		<section class="tarjeta">
+			<h2 id="titulo-tabla">Funcionarios</h2>
+			<div class="tabla-scroll">
+				<table>
+					<thead>
+						<tr>
+							<th>ID</th>
+							<th>Nombre</th>
+							<th>Cargo</th>
+							<th>Departamento</th>
+							<th>Teléfono</th>
+							<th>Acciones</th>
+						</tr>
+					</thead>
+					<tbody id="tabla-cuerpo"></tbody>
+				</table>
+			</div>
+		</section>
+	</main>
+
+	<script src="js/app.js"></script>
+</body>
+</html>
