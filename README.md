@@ -18,7 +18,10 @@ src/test/                           pruebas de la API (H2 en memoria)
 
 ## Cómo ejecutarlo
 
-**Forma rápida (Windows):** el script pide la clave de MySQL sin mostrarla, la verifica y arranca la app.
+**Credenciales:** copia `config/application.properties.example` como `config/application.properties`
+y pon tu usuario y clave de MySQL. Ese archivo no se sube a git y Spring Boot lo carga solo.
+
+**Forma rápida (Windows):** arranca la app (si no hay `config/application.properties`, pide usuario y clave).
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\iniciar.ps1
 ```
