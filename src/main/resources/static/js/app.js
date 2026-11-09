@@ -16,6 +16,9 @@ const caja = document.getElementById("mensaje");
 
 /** Hace la petición y devuelve { estado, datos }. datos es null en un 204. */
 async function pedir(url, opciones = {}) {
+	if (window.MODO_DEMO) {
+		return window.apiDemo(url, opciones);
+	}
 	const respuesta = await fetch(url, {
 		headers: { "Content-Type": "application/json" },
 		...opciones,
