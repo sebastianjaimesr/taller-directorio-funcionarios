@@ -1,0 +1,4 @@
+# Copia este archivo como config/application.properties y pon tus credenciales de MySQL.
+# Spring Boot lo carga automaticamente desde ./config al arrancar y no se sube a git.
+spring.datasource.username=tu_usuario
+spring.datasource.password=tu_clave
