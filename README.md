@@ -3,6 +3,10 @@
 Java 21 · Spring Boot 4.1.2 · MVC · MySQL · HTML/CSS/JS vanilla.
 Requisitos del enunciado: [REQUISITOS.md](REQUISITOS.md).
 
+**Demo en línea (GitHub Pages):** https://sebastianjaimesr.github.io/taller-directorio-funcionarios/
+GitHub Pages solo sirve archivos estáticos, así que la demo usa una API simulada que guarda los datos
+en el navegador con las mismas reglas que la API real. La versión completa (Spring Boot + MySQL) se ejecuta localmente.
+
 ## Estructura
 ```
 src/main/java/com/campuslands/directorio/
