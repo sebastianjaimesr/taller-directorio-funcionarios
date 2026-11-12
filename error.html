@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Acceso bloqueado · Directorio de funcionarios</title>
+	<link rel="icon" href="favicon.svg" type="image/svg+xml">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="pagina-error">
+	<main class="error-tarjeta" role="alert">
+		<span class="error-icono">
+			<svg viewBox="0 0 24 24"><path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2Zm-6 9a2 2 0 1 1 2-2 2 2 0 0 1-2 2Zm3.1-9H8.9V6a3.1 3.1 0 0 1 6.2 0Z"/></svg>
+		</span>
+		<p class="error-codigo">Error 423 · Acceso bloqueado</p>
+		<h1>Demasiados intentos fallidos</h1>
+		<p class="texto-suave">
+			Ingresaste un usuario o una contraseña incorrectos <strong>3 veces</strong>.
+			Por seguridad, el inicio de sesión quedó bloqueado temporalmente en este navegador.
+		</p>
+
+		<div class="error-contador">
+			<span>Podrás intentarlo de nuevo en</span>
+			<strong id="contador">05:00</strong>
+		</div>
+
+		<a id="btn-volver" href="login.html" class="boton primario bloque deshabilitado" aria-disabled="true">
+			Volver a iniciar sesión
+		</a>
+		<p class="pie-login">¿Olvidaste tu contraseña? Pide al administrador que la cambie en la base de datos.</p>
+	</main>
+
+	<script src="js/demo.js"></script>
+	<script src="js/error.js"></script>
+</body>
+</html>

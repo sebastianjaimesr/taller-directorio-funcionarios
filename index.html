@@ -4,89 +4,173 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Directorio de funcionarios</title>
+	<link rel="icon" href="favicon.svg" type="image/svg+xml">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="css/estilos.css">
 </head>
-<body>
-	<header class="encabezado">
-		<h1>Directorio de funcionarios</h1>
-	</header>
-
-	<main class="contenedor">
-		<div id="aviso-demo" class="mensaje info oculto">
-			Modo demostración (GitHub Pages): los datos se guardan solo en este navegador.
-			La versión completa con Spring Boot y MySQL se ejecuta localmente (ver README del repositorio).
+<body class="app cargando-sesion">
+	<!-- ===== Barra lateral ===== -->
+	<aside class="lateral">
+		<div class="logo logo-claro">
+			<span class="logo-icono">
+				<svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-8 1a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 1c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4Zm-8 0c-.3 0-.7 0-1.1.1A4.7 4.7 0 0 1 9 17v3H0v-2.5C0 15.1 5 13 8 13Z"/></svg>
+			</span>
+			<span>Directorio</span>
 		</div>
-		<div id="mensaje" class="mensaje oculto" role="status" aria-live="polite"></div>
 
-		<section class="tarjeta">
-			<h2 id="titulo-formulario">Registrar funcionario</h2>
-			<form id="formulario" novalidate>
-				<input type="hidden" id="id">
-				<div class="campos">
-					<label>Nombre *
-						<input type="text" id="nombre" maxlength="120" required>
-					</label>
-					<label>Cargo *
-						<input type="text" id="cargo" maxlength="120" required>
-					</label>
-					<label>Departamento *
-						<input type="text" id="departamento" maxlength="120" required>
-					</label>
-					<label>Teléfono
-						<input type="text" id="telefono" maxlength="30">
-					</label>
-				</div>
-				<div class="acciones">
-					<button type="submit" id="btn-guardar" class="primario">Registrar</button>
-					<button type="button" id="btn-limpiar">Limpiar</button>
-				</div>
-			</form>
-		</section>
+		<nav class="menu">
+			<span class="menu-titulo">General</span>
+			<a href="#" class="menu-item activo" aria-current="page">
+				<svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-8 1a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 1c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4Zm-8 0c-.3 0-.7 0-1.1.1A4.7 4.7 0 0 1 9 17v3H0v-2.5C0 15.1 5 13 8 13Z"/></svg>
+				Funcionarios
+			</a>
+		</nav>
 
-		<section class="tarjeta">
-			<h2>Buscar</h2>
-			<div class="busquedas">
-				<form id="form-id" class="busqueda">
-					<label>Por ID
-						<input type="number" id="buscar-id" min="1">
-					</label>
-					<button type="submit">Consultar</button>
-				</form>
-				<form id="form-nombre" class="busqueda">
-					<label>Por nombre
-						<input type="text" id="buscar-nombre" placeholder="Ej: ana">
-					</label>
-					<button type="submit">Buscar</button>
-				</form>
-				<form id="form-departamento" class="busqueda">
-					<label>Por departamento
-						<input type="text" id="buscar-departamento" placeholder="Ej: Contabilidad">
-					</label>
-					<button type="submit">Filtrar</button>
-				</form>
+		<div class="usuario-sesion">
+			<div class="avatar" id="avatar-usuario">--</div>
+			<div class="usuario-datos">
+				<strong id="nombre-usuario">Cargando…</strong>
+				<span id="login-usuario"></span>
 			</div>
-			<button type="button" id="btn-todos">Ver listado completo</button>
-		</section>
+			<button type="button" id="btn-salir" class="boton-icono claro" title="Cerrar sesión" aria-label="Cerrar sesión">
+				<svg viewBox="0 0 24 24"><path d="M10 17v-3H3v-4h7V7l5 5-5 5Zm9-14H12v2h7v14h-7v2h7a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z"/></svg>
+			</button>
+		</div>
+	</aside>
 
-		<section class="tarjeta">
-			<h2 id="titulo-tabla">Funcionarios</h2>
-			<div class="tabla-scroll">
-				<table>
-					<thead>
-						<tr>
-							<th>ID</th>
-							<th>Nombre</th>
-							<th>Cargo</th>
-							<th>Departamento</th>
-							<th>Teléfono</th>
-							<th>Acciones</th>
-						</tr>
-					</thead>
-					<tbody id="tabla-cuerpo"></tbody>
-				</table>
+	<!-- ===== Contenido ===== -->
+	<div class="principal">
+		<header class="cabecera">
+			<div>
+				<p class="miga">Inicio / Funcionarios</p>
+				<h1>Directorio de funcionarios</h1>
 			</div>
-		</section>
-	</main>
+			<button type="button" id="btn-nuevo" class="boton primario">
+				<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6Z"/></svg>
+				Nuevo funcionario
+			</button>
+		</header>
+
+		<main class="contenido">
+			<div id="aviso-demo" class="alerta info oculto">
+				Modo demostración (GitHub Pages): los datos se guardan solo en este navegador.
+				La versión completa con Spring Boot y MySQL se ejecuta localmente.
+			</div>
+
+			<!-- Indicadores -->
+			<section class="indicadores" aria-label="Resumen">
+				<article class="indicador">
+					<span class="indicador-icono azul"><svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-8 1a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 1c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4Z"/></svg></span>
+					<div><p>Funcionarios</p><strong id="ind-total">0</strong></div>
+				</article>
+				<article class="indicador">
+					<span class="indicador-icono verde"><svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7Zm-6 12H4v-2h2Zm0-4H4v-2h2Zm0-4H4V9h2Zm0-4H4V5h2Zm4 12H8v-2h2Zm0-4H8v-2h2Zm0-4H8V9h2Zm0-4H8V5h2Zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8Zm-2-8h-2v2h2Zm0 4h-2v2h2Z"/></svg></span>
+					<div><p>Departamentos</p><strong id="ind-departamentos">0</strong></div>
+				</article>
+				<article class="indicador">
+					<span class="indicador-icono ambar"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.2 11.4 11.4 0 0 0 3.6.6 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .6 3.6 1 1 0 0 1-.3 1Z"/></svg></span>
+					<div><p>Con teléfono</p><strong id="ind-telefono">0</strong></div>
+				</article>
+			</section>
+
+			<div class="rejilla">
+				<!-- Tabla -->
+				<section class="tarjeta tarjeta-tabla">
+					<div class="tarjeta-cabecera">
+						<div>
+							<h2 id="titulo-tabla">Funcionarios</h2>
+							<p class="texto-suave" id="conteo-tabla">—</p>
+						</div>
+					</div>
+
+					<form id="form-busqueda" class="barra-busqueda" novalidate>
+						<select id="tipo-busqueda" aria-label="Buscar por">
+							<option value="nombre">Nombre</option>
+							<option value="departamento">Departamento</option>
+							<option value="id">ID</option>
+						</select>
+						<div class="entrada-icono crece">
+							<svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 1 0-.7.7l.3.3v.8l5 5 1.5-1.5Zm-6 0a4.5 4.5 0 1 1 4.5-4.5A4.5 4.5 0 0 1 9.5 14Z"/></svg>
+							<input type="search" id="texto-busqueda" list="lista-departamentos" placeholder="Buscar por fragmento del nombre…" aria-label="Texto a buscar">
+						</div>
+						<button type="submit" class="boton primario">Buscar</button>
+						<button type="button" id="btn-todos" class="boton">Ver todos</button>
+					</form>
+					<datalist id="lista-departamentos"></datalist>
+
+					<div class="tabla-scroll">
+						<table>
+							<thead>
+								<tr>
+									<th>Funcionario</th>
+									<th>Cargo</th>
+									<th>Departamento</th>
+									<th>Teléfono</th>
+									<th class="derecha">Acciones</th>
+								</tr>
+							</thead>
+							<tbody id="tabla-cuerpo"></tbody>
+						</table>
+						<div id="tabla-vacia" class="estado-vacio oculto">
+							<svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 1 0-.7.7l.3.3v.8l5 5 1.5-1.5Zm-6 0a4.5 4.5 0 1 1 4.5-4.5A4.5 4.5 0 0 1 9.5 14Z"/></svg>
+							<p id="tabla-vacia-texto">No hay funcionarios para mostrar.</p>
+						</div>
+					</div>
+				</section>
+
+				<!-- Formulario -->
+				<section class="tarjeta tarjeta-formulario" id="panel-formulario">
+					<div class="tarjeta-cabecera">
+						<div>
+							<h2 id="titulo-formulario">Registrar funcionario</h2>
+							<p class="texto-suave" id="subtitulo-formulario">Los campos con * son obligatorios.</p>
+						</div>
+					</div>
+					<form id="formulario" novalidate>
+						<input type="hidden" id="id">
+						<label class="campo">
+							<span>Nombre completo *</span>
+							<input type="text" id="nombre" maxlength="120" placeholder="Ej: Ana Pérez" required>
+						</label>
+						<label class="campo">
+							<span>Cargo *</span>
+							<input type="text" id="cargo" maxlength="120" placeholder="Ej: Contadora" required>
+						</label>
+						<label class="campo">
+							<span>Departamento *</span>
+							<input type="text" id="departamento" maxlength="120" list="lista-departamentos" placeholder="Ej: Contabilidad" required>
+						</label>
+						<label class="campo">
+							<span>Teléfono</span>
+							<input type="tel" id="telefono" maxlength="30" placeholder="Opcional">
+						</label>
+						<div class="acciones">
+							<button type="submit" id="btn-guardar" class="boton primario">Registrar</button>
+							<button type="button" id="btn-limpiar" class="boton">Limpiar</button>
+						</div>
+					</form>
+				</section>
+			</div>
+		</main>
+	</div>
+
+	<!-- Confirmación para eliminar -->
+	<dialog id="dialogo-eliminar" class="dialogo">
+		<form method="dialog">
+			<span class="dialogo-icono"><svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6ZM19 4h-3.5l-1-1h-5l-1 1H5v2h14Z"/></svg></span>
+			<h3>¿Eliminar funcionario?</h3>
+			<p id="dialogo-texto">Esta acción no se puede deshacer.</p>
+			<div class="acciones fin">
+				<button value="cancelar" class="boton" autofocus>Cancelar</button>
+				<button value="confirmar" class="boton peligro-relleno">Sí, eliminar</button>
+			</div>
+		</form>
+	</dialog>
+
+	<!-- Notificaciones -->
+	<div id="mensaje" class="notificaciones" role="status" aria-live="polite"></div>
 
 	<script src="js/demo.js"></script>
 	<script src="js/app.js"></script>
