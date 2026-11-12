@@ -5,7 +5,7 @@ Resumen de requisitos del enunciado (PDF en OneDrive, Ejercicio-Clase).
 ## Stack
 - Java 21, Spring Boot, patrón MVC, MySQL.
 - Frontend: HTML, CSS y JavaScript vanilla (sin frameworks); consume la API REST.
-- Seguridad y CORS: fuera del alcance.
+- Seguridad: fuera del alcance del enunciado original; se añadió inicio de sesión con usuario y contraseña (tabla `usuarios` en MySQL, BCrypt). CORS: fuera del alcance.
 - Los datos deben persistir al reiniciar la aplicación.
 
 ## Entidad `Funcionario` (tabla `funcionarios`)

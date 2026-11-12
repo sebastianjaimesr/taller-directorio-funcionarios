@@ -4,6 +4,7 @@
  * así que allí la página usa esta API simulada que guarda los datos en el navegador
  * (localStorage) y respeta las mismas reglas y códigos de respuesta que la API real.
  * Al ejecutar la aplicación con Spring Boot este modo no se activa.
+ * También simula el inicio de sesión (usuario demo: admin / Admin123*).
  */
 (function () {
 	window.MODO_DEMO = location.hostname.endsWith("github.io");
@@ -17,6 +18,21 @@
 		{ nombre: "Luis Gómez", cargo: "Analista", departamento: "Sistemas", telefono: null },
 		{ nombre: "Mariana López", cargo: "Coordinadora", departamento: "Talento Humano", telefono: "3104445566" },
 	];
+
+	// Usuario de prueba de la demo (en local los usuarios viven en la tabla usuarios de MySQL).
+	const USUARIOS_DEMO = [{ usuario: "admin", clave: "Admin123*", nombre: "Administrador", rol: "ADMIN" }];
+	const CLAVE_SESION = "directorio-funcionarios-sesion";
+
+	function sesionActual() {
+		let sesion = null;
+		try {
+			sesion = JSON.parse(sessionStorage.getItem(CLAVE_SESION));
+		} catch (e) {
+			sesion = null;
+		}
+		if (!sesion) error(401, "Tu sesión expiró. Inicia sesión de nuevo.");
+		return sesion;
+	}
 
 	function cargar() {
 		try {
@@ -88,6 +104,39 @@
 		const metodo = (opciones.method || "GET").toUpperCase();
 		const u = new URL(url, location.origin);
 		const partes = u.pathname.split("/").filter(Boolean); // api, v1, funcionarios, {id}
+
+		// ----- Inicio de sesión simulado (en la versión real lo hace Spring Security + MySQL) -----
+		if (partes[2] === "auth") {
+			const accion = partes[3];
+			if (accion === "login" && metodo === "POST") {
+				const datosLogin = new URLSearchParams(opciones.body || "");
+				const usuario = (datosLogin.get("usuario") || "").trim().toLowerCase();
+				const clave = datosLogin.get("clave") || "";
+				const encontrado = USUARIOS_DEMO.find((x) => x.usuario === usuario && x.clave === clave);
+				if (!encontrado) error(401, "Usuario o contraseña incorrectos.");
+				const sesion = { usuario: encontrado.usuario, nombre: encontrado.nombre, rol: encontrado.rol };
+				try {
+					sessionStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
+				} catch (e) {
+					/* sin almacenamiento */
+				}
+				return { estado: 200, datos: sesion };
+			}
+			if (accion === "logout") {
+				try {
+					sessionStorage.removeItem(CLAVE_SESION);
+				} catch (e) {
+					/* sin almacenamiento */
+				}
+				return { estado: 204, datos: null };
+			}
+			if (accion === "yo") {
+				return { estado: 200, datos: sesionActual() };
+			}
+			error(405, "Operación no soportada");
+		}
+		sesionActual(); // la API de funcionarios exige sesión, igual que la real
+
 		const idTexto = partes[3];
 		let id = null;
 		if (idTexto !== undefined) {

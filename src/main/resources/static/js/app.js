@@ -1,32 +1,57 @@
 const API = "/api/v1/funcionarios";
+const API_AUTH = "/api/v1/auth";
 
 const formulario = document.getElementById("formulario");
+const panelFormulario = document.getElementById("panel-formulario");
 const campoId = document.getElementById("id");
 const campoNombre = document.getElementById("nombre");
 const campoCargo = document.getElementById("cargo");
 const campoDepartamento = document.getElementById("departamento");
 const campoTelefono = document.getElementById("telefono");
 const tituloFormulario = document.getElementById("titulo-formulario");
+const subtituloFormulario = document.getElementById("subtitulo-formulario");
 const btnGuardar = document.getElementById("btn-guardar");
 const tablaCuerpo = document.getElementById("tabla-cuerpo");
+const tablaVacia = document.getElementById("tabla-vacia");
+const tablaVaciaTexto = document.getElementById("tabla-vacia-texto");
 const tituloTabla = document.getElementById("titulo-tabla");
-const caja = document.getElementById("mensaje");
+const conteoTabla = document.getElementById("conteo-tabla");
+const tipoBusqueda = document.getElementById("tipo-busqueda");
+const textoBusqueda = document.getElementById("texto-busqueda");
+const listaDepartamentos = document.getElementById("lista-departamentos");
+const dialogoEliminar = document.getElementById("dialogo-eliminar");
+const contenedorMensajes = document.getElementById("mensaje");
 
 // ---------- Comunicación con la API ----------
 
 /** Hace la petición y devuelve { estado, datos }. datos es null en un 204. */
 async function pedir(url, opciones = {}) {
 	if (window.MODO_DEMO) {
-		return window.apiDemo(url, opciones);
+		try {
+			return await window.apiDemo(url, opciones);
+		} catch (error) {
+			if (error.estado === 401) irAlLogin();
+			throw error;
+		}
 	}
 	const respuesta = await fetch(url, {
-		headers: { "Content-Type": "application/json" },
+		headers: { "Content-Type": "application/json", Accept: "application/json" },
+		credentials: "same-origin",
 		...opciones,
 	});
+	// Sin sesión (o sesión vencida): volver a la pantalla de inicio de sesión.
+	if (respuesta.status === 401) {
+		irAlLogin();
+		throw new Error("Tu sesión expiró. Inicia sesión de nuevo.");
+	}
 	let datos = null;
 	if (respuesta.status !== 204) {
 		const texto = await respuesta.text();
-		datos = texto ? JSON.parse(texto) : null;
+		try {
+			datos = texto ? JSON.parse(texto) : null;
+		} catch (e) {
+			datos = null;
+		}
 	}
 	if (!respuesta.ok) {
 		const mensajeError = datos && datos.mensaje ? datos.mensaje : `Error ${respuesta.status}`;
@@ -35,45 +60,168 @@ async function pedir(url, opciones = {}) {
 	return { estado: respuesta.status, datos };
 }
 
-// ---------- Mensajes ----------
+function irAlLogin() {
+	location.replace("login.html");
+}
 
-function mostrarMensaje(texto, tipo) {
-	caja.textContent = texto;
-	caja.className = `mensaje ${tipo}`;
+// ---------- Sesión ----------
+
+function iniciales(texto) {
+	return (texto || "?")
+		.trim()
+		.split(/\s+/)
+		.slice(0, 2)
+		.map((p) => p[0])
+		.join("")
+		.toUpperCase();
+}
+
+async function cargarSesion() {
+	const { datos } = await pedir(`${API_AUTH}/yo`);
+	document.getElementById("nombre-usuario").textContent = datos.nombre;
+	document.getElementById("login-usuario").textContent = `@${datos.usuario}`;
+	document.getElementById("avatar-usuario").textContent = iniciales(datos.nombre);
+	document.body.classList.remove("cargando-sesion");
+}
+
+document.getElementById("btn-salir").addEventListener("click", async () => {
+	try {
+		await pedir(`${API_AUTH}/logout`, { method: "POST" });
+	} finally {
+		irAlLogin();
+	}
+});
+
+// ---------- Notificaciones ----------
+
+const ICONOS = {
+	exito: '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm-2 15-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8Z"/>',
+	error: '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 15h-2v-2h2Zm0-4h-2V7h2Z"/>',
+	info: '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 15h-2v-6h2Zm0-8h-2V7h2Z"/>',
+};
+
+function mostrarMensaje(texto, tipo = "info") {
+	const aviso = document.createElement("div");
+	aviso.className = `notificacion ${tipo}`;
+	aviso.setAttribute("role", tipo === "error" ? "alert" : "status");
+	aviso.innerHTML = `<svg viewBox="0 0 24 24">${ICONOS[tipo] || ICONOS.info}</svg>`;
+	const span = document.createElement("span");
+	span.textContent = texto;
+	aviso.appendChild(span);
+	contenedorMensajes.appendChild(aviso);
+
+	setTimeout(() => {
+		aviso.classList.add("saliendo");
+		setTimeout(() => aviso.remove(), 300);
+	}, tipo === "error" ? 6000 : 4000);
 }
 
 function ocultarMensaje() {
-	caja.className = "mensaje oculto";
+	contenedorMensajes.innerHTML = "";
 }
 
 // ---------- Tabla ----------
 
-function pintarTabla(funcionarios) {
+const COLORES_DEPTO = [
+	["#eef2ff", "#4338ca"],
+	["#ecfdf5", "#047857"],
+	["#fff7ed", "#c2410c"],
+	["#fdf2f8", "#be185d"],
+	["#f0f9ff", "#0369a1"],
+	["#f5f3ff", "#6d28d9"],
+	["#fefce8", "#a16207"],
+	["#f0fdfa", "#0f766e"],
+];
+
+/** Mismo departamento = mismo color, sin importar mayúsculas. */
+function colorDepartamento(nombre) {
+	let suma = 0;
+	for (const letra of nombre.toLowerCase()) suma = (suma * 31 + letra.charCodeAt(0)) >>> 0;
+	return COLORES_DEPTO[suma % COLORES_DEPTO.length];
+}
+
+function crearBotonIcono(titulo, ruta, clase, alHacerClic) {
+	const boton = document.createElement("button");
+	boton.type = "button";
+	boton.className = `boton-icono ${clase}`;
+	boton.title = titulo;
+	boton.setAttribute("aria-label", titulo);
+	boton.innerHTML = `<svg viewBox="0 0 24 24"><path d="${ruta}"/></svg>`;
+	boton.addEventListener("click", alHacerClic);
+	return boton;
+}
+
+function celda(contenido) {
+	const td = document.createElement("td");
+	if (contenido instanceof Node) td.appendChild(contenido);
+	else td.textContent = contenido;
+	return td;
+}
+
+function pintarTabla(funcionarios, mensajeVacio = "No hay funcionarios para mostrar.") {
 	tablaCuerpo.innerHTML = "";
+	tablaVacia.classList.toggle("oculto", funcionarios.length > 0);
+	tablaVaciaTexto.textContent = mensajeVacio;
+	conteoTabla.textContent =
+		funcionarios.length === 1 ? "1 registro" : `${funcionarios.length} registros`;
+
 	for (const f of funcionarios) {
 		const fila = document.createElement("tr");
-		for (const valor of [f.id, f.nombre, f.cargo, f.departamento, f.telefono || ""]) {
-			const celda = document.createElement("td");
-			celda.textContent = valor;
-			fila.appendChild(celda);
+
+		// Funcionario: avatar + nombre + ID
+		const persona = document.createElement("div");
+		persona.className = "persona";
+		const avatar = document.createElement("div");
+		avatar.className = "avatar";
+		avatar.textContent = iniciales(f.nombre);
+		const datos = document.createElement("div");
+		const nombre = document.createElement("strong");
+		nombre.textContent = f.nombre;
+		const id = document.createElement("small");
+		id.textContent = `ID ${f.id}`;
+		datos.append(nombre, id);
+		persona.append(avatar, datos);
+		fila.appendChild(celda(persona));
+
+		fila.appendChild(celda(f.cargo));
+
+		const etiqueta = document.createElement("span");
+		etiqueta.className = "etiqueta";
+		const [fondo, texto] = colorDepartamento(f.departamento);
+		etiqueta.style.background = fondo;
+		etiqueta.style.color = texto;
+		etiqueta.textContent = f.departamento;
+		fila.appendChild(celda(etiqueta));
+
+		const telefono = document.createElement("span");
+		if (f.telefono) {
+			telefono.textContent = f.telefono;
+		} else {
+			telefono.className = "sin-dato";
+			telefono.textContent = "—";
 		}
+		fila.appendChild(celda(telefono));
 
-		const celdaAcciones = document.createElement("td");
-		celdaAcciones.className = "acciones-fila";
+		const acciones = document.createElement("div");
+		acciones.className = "acciones-fila";
+		acciones.append(
+			crearBotonIcono(
+				`Editar a ${f.nombre}`,
+				"M3 17.3V21h3.8L17.8 9.9l-3.7-3.7ZM20.7 7a1 1 0 0 0 0-1.4l-2.3-2.3a1 1 0 0 0-1.4 0l-1.8 1.8 3.7 3.7Z",
+				"",
+				() => cargarEnFormulario(f.id)
+			),
+			crearBotonIcono(
+				`Eliminar a ${f.nombre}`,
+				"M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6ZM19 4h-3.5l-1-1h-5l-1 1H5v2h14Z",
+				"peligro",
+				() => eliminar(f)
+			)
+		);
+		const tdAcciones = celda(acciones);
+		tdAcciones.className = "derecha";
+		fila.appendChild(tdAcciones);
 
-		const btnEditar = document.createElement("button");
-		btnEditar.type = "button";
-		btnEditar.textContent = "Editar";
-		btnEditar.addEventListener("click", () => cargarEnFormulario(f.id));
-
-		const btnEliminar = document.createElement("button");
-		btnEliminar.type = "button";
-		btnEliminar.className = "peligro";
-		btnEliminar.textContent = "Eliminar";
-		btnEliminar.addEventListener("click", () => eliminar(f));
-
-		celdaAcciones.append(btnEditar, btnEliminar);
-		fila.appendChild(celdaAcciones);
 		tablaCuerpo.appendChild(fila);
 	}
 }
@@ -84,20 +232,46 @@ async function cargarLista(url, titulo, mensajeVacio) {
 	try {
 		const { datos } = await pedir(url);
 		const lista = datos || [];
-		pintarTabla(lista);
+		pintarTabla(lista, mensajeVacio);
 		if (lista.length === 0) {
 			mostrarMensaje(mensajeVacio, "info");
 		}
 		return lista.length > 0;
 	} catch (error) {
-		pintarTabla([]);
+		pintarTabla([], "No se pudo cargar la información.");
 		mostrarMensaje(`No se pudo cargar la información: ${error.message}`, "error");
 		return false;
 	}
 }
 
-function listarTodos() {
-	return cargarLista(API, "Funcionarios", "El directorio está vacío.");
+/** Recalcula los indicadores y la lista de departamentos sugeridos. */
+async function actualizarResumen() {
+	try {
+		const { datos } = await pedir(API);
+		const lista = datos || [];
+		const departamentos = new Map();
+		for (const f of lista) {
+			const clave = f.departamento.toLowerCase();
+			if (!departamentos.has(clave)) departamentos.set(clave, f.departamento);
+		}
+		document.getElementById("ind-total").textContent = lista.length;
+		document.getElementById("ind-departamentos").textContent = departamentos.size;
+		document.getElementById("ind-telefono").textContent = lista.filter((f) => f.telefono).length;
+
+		listaDepartamentos.innerHTML = "";
+		for (const nombre of [...departamentos.values()].sort((a, b) => a.localeCompare(b))) {
+			const opcion = document.createElement("option");
+			opcion.value = nombre;
+			listaDepartamentos.appendChild(opcion);
+		}
+	} catch (e) {
+		/* el error ya se muestra al cargar la tabla */
+	}
+}
+
+async function listarTodos() {
+	await cargarLista(API, "Todos los funcionarios", "El directorio está vacío. Registra el primer funcionario.");
+	await actualizarResumen();
 }
 
 // ---------- Formulario ----------
@@ -106,21 +280,27 @@ function limpiarFormulario() {
 	formulario.reset();
 	campoId.value = "";
 	tituloFormulario.textContent = "Registrar funcionario";
+	subtituloFormulario.textContent = "Los campos con * son obligatorios.";
 	btnGuardar.textContent = "Registrar";
+	panelFormulario.classList.remove("editando");
+	for (const campo of [campoNombre, campoCargo, campoDepartamento]) campo.classList.remove("invalido");
 }
 
 async function cargarEnFormulario(id) {
 	try {
 		const { datos } = await pedir(`${API}/${id}`);
+		limpiarFormulario();
 		campoId.value = datos.id;
 		campoNombre.value = datos.nombre;
 		campoCargo.value = datos.cargo;
 		campoDepartamento.value = datos.departamento;
 		campoTelefono.value = datos.telefono || "";
 		tituloFormulario.textContent = `Editar funcionario #${datos.id}`;
+		subtituloFormulario.textContent = "Modifica los datos y guarda los cambios.";
 		btnGuardar.textContent = "Guardar cambios";
-		ocultarMensaje();
-		campoNombre.focus();
+		panelFormulario.classList.add("editando");
+		panelFormulario.scrollIntoView({ behavior: "smooth", block: "start" });
+		campoNombre.focus({ preventScroll: true });
 	} catch (error) {
 		mostrarMensaje(error.message, "error");
 	}
@@ -136,35 +316,78 @@ formulario.addEventListener("submit", async (evento) => {
 		telefono: campoTelefono.value.trim(),
 	};
 
-	if (!cuerpo.nombre || !cuerpo.cargo || !cuerpo.departamento) {
+	const faltantes = [
+		[campoNombre, cuerpo.nombre],
+		[campoCargo, cuerpo.cargo],
+		[campoDepartamento, cuerpo.departamento],
+	];
+	let primero = null;
+	for (const [campo, valor] of faltantes) {
+		campo.classList.toggle("invalido", !valor);
+		if (!valor && !primero) primero = campo;
+	}
+	if (primero) {
 		mostrarMensaje("Nombre, cargo y departamento son obligatorios.", "error");
+		primero.focus();
 		return;
 	}
 
 	const id = campoId.value;
+	const editando = Boolean(id);
+	btnGuardar.disabled = true;
 	try {
-		if (id) {
+		if (editando) {
 			await pedir(`${API}/${id}`, { method: "PUT", body: JSON.stringify(cuerpo) });
 		} else {
 			await pedir(API, { method: "POST", body: JSON.stringify(cuerpo) });
 		}
 		limpiarFormulario();
 		await listarTodos();
-		mostrarMensaje(id ? "Funcionario actualizado correctamente." : "Funcionario registrado correctamente.", "exito");
+		mostrarMensaje(
+			editando ? "Funcionario actualizado correctamente." : "Funcionario registrado correctamente.",
+			"exito"
+		);
 	} catch (error) {
 		mostrarMensaje(error.message, "error");
+	} finally {
+		btnGuardar.disabled = false;
 	}
 });
 
 document.getElementById("btn-limpiar").addEventListener("click", () => {
 	limpiarFormulario();
-	ocultarMensaje();
+	campoNombre.focus();
 });
 
-// ---------- Eliminar ----------
+document.getElementById("btn-nuevo").addEventListener("click", () => {
+	limpiarFormulario();
+	panelFormulario.scrollIntoView({ behavior: "smooth", block: "start" });
+	campoNombre.focus({ preventScroll: true });
+});
+
+for (const campo of [campoNombre, campoCargo, campoDepartamento]) {
+	campo.addEventListener("input", () => campo.classList.remove("invalido"));
+}
+
+// ---------- Eliminar (con confirmación) ----------
+
+function confirmar(texto) {
+	return new Promise((resolver) => {
+		document.getElementById("dialogo-texto").textContent = texto;
+		dialogoEliminar.returnValue = "";
+		dialogoEliminar.addEventListener(
+			"close",
+			() => resolver(dialogoEliminar.returnValue === "confirmar"),
+			{ once: true }
+		);
+		dialogoEliminar.showModal();
+	});
+}
 
 async function eliminar(funcionario) {
-	const confirmado = confirm(`¿Eliminar a ${funcionario.nombre} (ID ${funcionario.id})?`);
+	const confirmado = await confirmar(
+		`Se eliminará a "${funcionario.nombre}" (ID ${funcionario.id}). Esta acción no se puede deshacer.`
+	);
 	if (!confirmado) {
 		return;
 	}
@@ -182,62 +405,84 @@ async function eliminar(funcionario) {
 
 // ---------- Búsquedas ----------
 
-document.getElementById("form-id").addEventListener("submit", async (evento) => {
-	evento.preventDefault();
-	const id = document.getElementById("buscar-id").value.trim();
-	if (!id) {
-		mostrarMensaje("Escribe un ID para consultar.", "error");
-		return;
-	}
-	tituloTabla.textContent = `Funcionario con ID ${id}`;
-	try {
-		const { datos } = await pedir(`${API}/${encodeURIComponent(id)}`);
-		pintarTabla([datos]);
-		ocultarMensaje();
-	} catch (error) {
-		pintarTabla([]);
-		mostrarMensaje(error.message, "error");
-	}
-});
+const PLACEHOLDERS = {
+	nombre: "Buscar por fragmento del nombre…",
+	departamento: "Nombre completo del departamento…",
+	id: "Número de ID…",
+};
 
-document.getElementById("form-nombre").addEventListener("submit", async (evento) => {
+tipoBusqueda.addEventListener("change", () => {
+	const tipo = tipoBusqueda.value;
+	textoBusqueda.placeholder = PLACEHOLDERS[tipo];
+	textoBusqueda.type = tipo === "id" ? "number" : "search";
+	textoBusqueda.min = tipo === "id" ? "1" : "";
+	// Solo se sugieren departamentos cuando se filtra por departamento.
+	if (tipo === "departamento") textoBusqueda.setAttribute("list", "lista-departamentos");
+	else textoBusqueda.removeAttribute("list");
+	textoBusqueda.value = "";
+	textoBusqueda.focus();
+});
+textoBusqueda.removeAttribute("list");
+
+document.getElementById("form-busqueda").addEventListener("submit", async (evento) => {
 	evento.preventDefault();
-	const nombre = document.getElementById("buscar-nombre").value.trim();
-	if (!nombre) {
-		mostrarMensaje("Escribe parte del nombre para buscar.", "error");
-		return;
-	}
+	const tipo = tipoBusqueda.value;
+	const valor = textoBusqueda.value.trim();
 	ocultarMensaje();
-	await cargarLista(
-		`${API}?nombre=${encodeURIComponent(nombre)}`,
-		`Resultados para "${nombre}"`,
-		`No hay funcionarios cuyo nombre contenga "${nombre}".`
-	);
-});
 
-document.getElementById("form-departamento").addEventListener("submit", async (evento) => {
-	evento.preventDefault();
-	const departamento = document.getElementById("buscar-departamento").value.trim();
-	if (!departamento) {
+	if (tipo === "id") {
+		if (!valor) {
+			mostrarMensaje("Escribe un ID para consultar.", "error");
+			return;
+		}
+		tituloTabla.textContent = `Funcionario con ID ${valor}`;
+		try {
+			const { datos } = await pedir(`${API}/${encodeURIComponent(valor)}`);
+			pintarTabla([datos]);
+		} catch (error) {
+			pintarTabla([], error.message);
+			mostrarMensaje(error.message, "error");
+		}
+		return;
+	}
+
+	if (tipo === "nombre") {
+		if (!valor) {
+			mostrarMensaje("Escribe parte del nombre para buscar.", "error");
+			return;
+		}
+		await cargarLista(
+			`${API}?nombre=${encodeURIComponent(valor)}`,
+			`Resultados para "${valor}"`,
+			`No hay funcionarios cuyo nombre contenga "${valor}".`
+		);
+		return;
+	}
+
+	if (!valor) {
 		mostrarMensaje("Escribe el nombre del departamento.", "error");
 		return;
 	}
-	ocultarMensaje();
 	await cargarLista(
-		`${API}?departamento=${encodeURIComponent(departamento)}`,
-		`Departamento: ${departamento}`,
-		`No hay funcionarios en el departamento "${departamento}".`
+		`${API}?departamento=${encodeURIComponent(valor)}`,
+		`Departamento: ${valor}`,
+		`No hay funcionarios en el departamento "${valor}".`
 	);
 });
 
 document.getElementById("btn-todos").addEventListener("click", async () => {
-	document.getElementById("buscar-id").value = "";
-	document.getElementById("buscar-nombre").value = "";
-	document.getElementById("buscar-departamento").value = "";
+	textoBusqueda.value = "";
 	ocultarMensaje();
 	await listarTodos();
 });
 
 // ---------- Inicio ----------
 
-listarTodos();
+(async function iniciar() {
+	try {
+		await cargarSesion();
+	} catch (e) {
+		return; // pedir() ya redirige al login si no hay sesión
+	}
+	await listarTodos();
+})();

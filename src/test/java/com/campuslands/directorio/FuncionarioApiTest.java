@@ -15,13 +15,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.campuslands.directorio.model.Funcionario;
 import com.campuslands.directorio.repository.FuncionarioRepository;
 
+/** Pruebas de la API con un usuario ya autenticado (@WithMockUser). */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "admin")
 class FuncionarioApiTest {
 
 	private static final String API = "/api/v1/funcionarios";
