@@ -18,5 +18,14 @@ if (-not (Test-Path ".\config\application.properties") -and -not $env:DB_PASSWOR
 	}
 }
 
-# Con JDK 21 instalado se puede quitar -Djava.version=17
-.\mvnw.cmd "-Djava.version=17" spring-boot:run
+# Usa el JDK 21 de la carpeta de usuario si existe (el proyecto pide Java 21).
+# Si no hay JDK 21, compila para Java 17 desde cero (clean) para no mezclar versiones.
+$java = Get-ChildItem "$env:USERPROFILE\jdk-21" -Recurse -Filter java.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($java) {
+	$env:JAVA_HOME = $java.Directory.Parent.FullName
+	Write-Host "Usando JDK 21: $env:JAVA_HOME"
+	.\mvnw.cmd spring-boot:run
+} else {
+	Write-Host "No se encontro JDK 21 en $env:USERPROFILE\jdk-21; se compila para Java 17."
+	.\mvnw.cmd "-Djava.version=17" clean spring-boot:run
+}

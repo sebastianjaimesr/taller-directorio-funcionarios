@@ -3,7 +3,7 @@ package com.campuslands.directorio;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -60,7 +60,7 @@ class AutenticacionTest {
 	void sinSesionLaPaginaRedirigeAlLogin() throws Exception {
 		mvc.perform(get("/index.html"))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrlPattern("**/login.html"));
+				.andExpect(redirectedUrl("/login.html"));
 	}
 
 	@Test
