@@ -4,7 +4,7 @@ Java 21 · Spring Boot 4.1.2 · Spring Security · MVC · MySQL · HTML/CSS/JS v
 Requisitos del enunciado: [REQUISITOS.md](REQUISITOS.md).
 
 **Demo en línea (GitHub Pages):** https://sebastianjaimesr.github.io/taller-directorio-funcionarios/
-(usuario demo: `admin` / `Admin123*`)
+(usuario demo: `campus2023` / `campus2023`)
 GitHub Pages solo sirve archivos estáticos, así que la demo usa una API simulada que guarda los datos
 en el navegador con las mismas reglas que la API real. La versión completa (Spring Boot + MySQL) se ejecuta localmente.
 
@@ -13,14 +13,19 @@ La aplicación pide **usuario y contraseña** antes de mostrar el directorio.
 Los usuarios viven en la tabla `usuarios` de MySQL (la misma base `directorio_funcionarios`)
 y se administran desde **DBeaver**. Las contraseñas se guardan cifradas con **BCrypt**.
 
-| Usuario    | Contraseña     | Rol     |
-|------------|----------------|---------|
-| `admin`    | `Admin123*`    | ADMIN   |
-| `consulta` | `Consulta123*` | USUARIO |
+| Usuario      | Contraseña     | Rol     |
+|--------------|----------------|---------|
+| `campus2023` | `campus2023` | ADMIN   |
+| `consulta`   | `Consulta123*` | USUARIO |
 
 Flujo: `login.html` → `POST /api/v1/auth/login` (Spring Security valida contra la tabla `usuarios`)
 → cookie de sesión `JSESSIONID` → `index.html`. Sin sesión, la API responde `401` y las páginas
 redirigen al login. `POST /api/v1/auth/logout` cierra la sesión; `GET /api/v1/auth/yo` devuelve el usuario actual.
+
+**Intentos fallidos:** después de **3 intentos fallidos** el servidor responde `423` y la página redirige a
+`error.html`, que muestra una cuenta regresiva. El login de ese navegador queda bloqueado **5 minutos**
+(aunque se recargue la página). `GET /api/v1/auth/estado` indica si está bloqueado y cuántos segundos faltan.
+Se configura en `security/IntentosLogin.java` (`MAXIMO_INTENTOS`, `TIEMPO_BLOQUEO`).
 
 ### Preparar la base de datos en DBeaver
 1. En DBeaver crea (o abre) la conexión **MySQL** a `localhost:3306` con tu usuario `root`.
@@ -50,12 +55,13 @@ src/main/java/com/campuslands/directorio/
   repository/UsuarioRepository      búsqueda de usuario para el login
   config/SeguridadConfig            reglas de Spring Security (login, logout, 401)
   security/UsuarioDetailsService    carga el usuario desde MySQL
+  security/IntentosLogin            bloqueo tras 3 intentos fallidos
   security/GenerarClave             utilidad para cifrar contraseñas nuevas
   controller/AuthController         GET /api/v1/auth/yo
   service/FuncionarioService        reglas de negocio y filtros
   controller/FuncionarioController  API REST /api/v1/funcionarios
   exception/                        404, 400 y mensajes JSON de error
-src/main/resources/static/          login.html, index.html, css/estilos.css, js/login.js, js/app.js
+src/main/resources/static/          login.html, index.html, error.html, css/estilos.css, js/*.js
 src/test/                           pruebas de la API y del login (H2 en memoria)
 database/directorio.sql             script para ejecutar en DBeaver
 ```
@@ -81,7 +87,7 @@ powershell -ExecutionPolicy Bypass -File .\iniciar.ps1
    ```powershell
    .\mvnw.cmd spring-boot:run
    ```
-4. Abrir http://localhost:8080 e iniciar sesión con `admin` / `Admin123*`.
+4. Abrir http://localhost:8080 e iniciar sesión con `campus2023` / `campus2023`.
 
 ## Pruebas
 ```powershell

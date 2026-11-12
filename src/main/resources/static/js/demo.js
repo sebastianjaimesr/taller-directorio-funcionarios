@@ -4,7 +4,7 @@
  * así que allí la página usa esta API simulada que guarda los datos en el navegador
  * (localStorage) y respeta las mismas reglas y códigos de respuesta que la API real.
  * Al ejecutar la aplicación con Spring Boot este modo no se activa.
- * También simula el inicio de sesión (usuario demo: admin / Admin123*).
+ * También simula el inicio de sesión (usuario demo: campus2023 / campus2023) y el bloqueo tras 3 fallos.
  */
 (function () {
 	window.MODO_DEMO = location.hostname.endsWith("github.io");
@@ -20,8 +20,39 @@
 	];
 
 	// Usuario de prueba de la demo (en local los usuarios viven en la tabla usuarios de MySQL).
-	const USUARIOS_DEMO = [{ usuario: "admin", clave: "Admin123*", nombre: "Administrador", rol: "ADMIN" }];
+	const USUARIOS_DEMO = [{ usuario: "campus2023", clave: "campus2023", nombre: "Administrador", rol: "ADMIN" }];
 	const CLAVE_SESION = "directorio-funcionarios-sesion";
+	const CLAVE_INTENTOS = "directorio-funcionarios-intentos";
+	const MAXIMO_INTENTOS = 3;
+	const BLOQUEO_MS = 5 * 60 * 1000;
+
+	function leerIntentos() {
+		try {
+			return JSON.parse(sessionStorage.getItem(CLAVE_INTENTOS)) || { fallos: 0, hasta: 0 };
+		} catch (e) {
+			return { fallos: 0, hasta: 0 };
+		}
+	}
+
+	function guardarIntentos(datos) {
+		try {
+			sessionStorage.setItem(CLAVE_INTENTOS, JSON.stringify(datos));
+		} catch (e) {
+			/* sin almacenamiento */
+		}
+	}
+
+	function segundosBloqueo() {
+		const restante = leerIntentos().hasta - Date.now();
+		return restante > 0 ? Math.ceil(restante / 1000) : 0;
+	}
+
+	function errorBloqueo() {
+		const e = new Error("Demasiados intentos fallidos. Intenta de nuevo más tarde.");
+		e.estado = 423;
+		e.bloqueado = true;
+		throw e;
+	}
 
 	function sesionActual() {
 		let sesion = null;
@@ -108,12 +139,28 @@
 		// ----- Inicio de sesión simulado (en la versión real lo hace Spring Security + MySQL) -----
 		if (partes[2] === "auth") {
 			const accion = partes[3];
+			if (accion === "estado") {
+				const segundos = segundosBloqueo();
+				return { estado: 200, datos: { bloqueado: segundos > 0, segundos } };
+			}
 			if (accion === "login" && metodo === "POST") {
+				if (segundosBloqueo() > 0) errorBloqueo();
 				const datosLogin = new URLSearchParams(opciones.body || "");
 				const usuario = (datosLogin.get("usuario") || "").trim().toLowerCase();
 				const clave = datosLogin.get("clave") || "";
 				const encontrado = USUARIOS_DEMO.find((x) => x.usuario === usuario && x.clave === clave);
-				if (!encontrado) error(401, "Usuario o contraseña incorrectos.");
+				if (!encontrado) {
+					const intentos = leerIntentos();
+					intentos.fallos += 1;
+					if (intentos.fallos >= MAXIMO_INTENTOS) {
+						guardarIntentos({ fallos: 0, hasta: Date.now() + BLOQUEO_MS });
+						errorBloqueo();
+					}
+					guardarIntentos(intentos);
+					const quedan = MAXIMO_INTENTOS - intentos.fallos;
+					error(401, `Usuario o contraseña incorrectos. ${quedan === 1 ? "Te queda 1 intento." : `Te quedan ${quedan} intentos.`}`);
+				}
+				guardarIntentos({ fallos: 0, hasta: 0 });
 				const sesion = { usuario: encontrado.usuario, nombre: encontrado.nombre, rol: encontrado.rol };
 				try {
 					sessionStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));

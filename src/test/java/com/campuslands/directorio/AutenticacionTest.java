@@ -72,7 +72,8 @@ class AutenticacionTest {
 	void claveIncorrectaResponde401() throws Exception {
 		mvc.perform(post("/api/v1/auth/login").param("usuario", "admin").param("clave", "mala"))
 				.andExpect(status().isUnauthorized())
-				.andExpect(jsonPath("$.mensaje").value("Usuario o contraseña incorrectos."));
+				.andExpect(jsonPath("$.mensaje").value("Usuario o contraseña incorrectos. Te quedan 2 intentos."))
+				.andExpect(jsonPath("$.intentosRestantes").value(2));
 	}
 
 	@Test
@@ -85,7 +86,8 @@ class AutenticacionTest {
 	void usuarioInactivoNoPuedeEntrar() throws Exception {
 		mvc.perform(post("/api/v1/auth/login").param("usuario", "inactivo").param("clave", "Clave123*"))
 				.andExpect(status().isUnauthorized())
-				.andExpect(jsonPath("$.mensaje").value("Tu usuario está desactivado. Contacta al administrador."));
+				.andExpect(jsonPath("$.mensaje").value(
+						"Tu usuario está desactivado. Contacta al administrador. Te quedan 2 intentos."));
 	}
 
 	@Test
@@ -105,5 +107,49 @@ class AutenticacionTest {
 		// Cerrar sesión: la API vuelve a pedir login.
 		mvc.perform(post("/api/v1/auth/logout").session(sesion)).andExpect(status().isNoContent());
 		mvc.perform(get("/api/v1/funcionarios").session(sesion)).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void laPaginaDeErrorEsPublica() throws Exception {
+		mvc.perform(get("/error.html")).andExpect(status().isOk());
+		mvc.perform(get("/api/v1/auth/estado"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.bloqueado").value(false));
+	}
+
+	@Test
+	void tresFallosBloqueanElLoginAunqueLaClaveSeaCorrecta() throws Exception {
+		MockHttpSession sesion = new MockHttpSession();
+		mvc.perform(post("/api/v1/auth/login").session(sesion).param("usuario", "admin").param("clave", "x1"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.intentosRestantes").value(2));
+		mvc.perform(post("/api/v1/auth/login").session(sesion).param("usuario", "admin").param("clave", "x2"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.mensaje").value("Usuario o contraseña incorrectos. Te queda 1 intento."));
+		// Tercer fallo: 423 y bloqueado
+		mvc.perform(post("/api/v1/auth/login").session(sesion).param("usuario", "admin").param("clave", "x3"))
+				.andExpect(status().isLocked())
+				.andExpect(jsonPath("$.bloqueado").value(true));
+		// Bloqueado: ni la clave correcta entra
+		mvc.perform(post("/api/v1/auth/login").session(sesion).param("usuario", "admin").param("clave", "Admin123*"))
+				.andExpect(status().isLocked());
+		mvc.perform(get("/api/v1/auth/estado").session(sesion))
+				.andExpect(jsonPath("$.bloqueado").value(true))
+				.andExpect(jsonPath("$.segundos").isNumber());
+	}
+
+	@Test
+	void unLoginCorrectoReiniciaElContador() throws Exception {
+		MockHttpSession sesion = new MockHttpSession();
+		mvc.perform(post("/api/v1/auth/login").session(sesion).param("usuario", "admin").param("clave", "x1"));
+		mvc.perform(post("/api/v1/auth/login").session(sesion).param("usuario", "admin").param("clave", "x2"));
+		MockHttpSession nueva = (MockHttpSession) mvc
+				.perform(post("/api/v1/auth/login").session(sesion).param("usuario", "admin").param("clave", "Admin123*"))
+				.andExpect(status().isOk())
+				.andReturn().getRequest().getSession();
+		mvc.perform(post("/api/v1/auth/logout").session(nueva));
+		MockHttpSession otra = new MockHttpSession();
+		mvc.perform(post("/api/v1/auth/login").session(otra).param("usuario", "admin").param("clave", "x"))
+				.andExpect(jsonPath("$.intentosRestantes").value(2));
 	}
 }

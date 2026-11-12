@@ -1,6 +1,7 @@
 // Pantalla de inicio de sesión.
 // Envía usuario y clave a /api/v1/auth/login (lo atiende Spring Security, ver SeguridadConfig.java).
 // Si son correctos, el servidor crea la sesión (cookie JSESSIONID) y pasamos al directorio.
+// Tras 3 intentos fallidos el servidor responde 423 (bloqueado) y vamos a error.html.
 
 const formLogin = document.getElementById("form-login");
 const campoUsuario = document.getElementById("usuario");
@@ -47,7 +48,10 @@ async function iniciarSesion(usuario, clave) {
 	});
 	const datos = await respuesta.json().catch(() => ({}));
 	if (!respuesta.ok) {
-		throw new Error(datos.mensaje || "No se pudo iniciar sesión.");
+		const error = new Error(datos.mensaje || "No se pudo iniciar sesión.");
+		error.estado = respuesta.status;
+		error.bloqueado = Boolean(datos.bloqueado);
+		throw error;
 	}
 	return { estado: respuesta.status, datos };
 }
@@ -71,6 +75,10 @@ formLogin.addEventListener("submit", async (evento) => {
 		await iniciarSesion(usuario, clave);
 		location.replace("index.html");
 	} catch (error) {
+		if (error.bloqueado || error.estado === 423) {
+			location.replace("error.html");
+			return;
+		}
 		cargando(false);
 		mostrarError(error.message);
 		campoClave.value = "";
@@ -82,8 +90,20 @@ for (const campo of [campoUsuario, campoClave]) {
 	campo.addEventListener("input", () => campo.classList.remove("invalido"));
 }
 
+// Si este navegador está bloqueado, ir a la página de error.
 // Si ya hay sesión abierta, ir directo al directorio.
 (async function () {
+	try {
+		const estado = window.MODO_DEMO
+			? (await window.apiDemo("/api/v1/auth/estado")).datos
+			: await fetch("/api/v1/auth/estado", { headers: { Accept: "application/json" } }).then((r) => r.json());
+		if (estado && estado.bloqueado) {
+			location.replace("error.html");
+			return;
+		}
+	} catch (e) {
+		/* si no se puede consultar, se deja intentar: el servidor igual bloquea */
+	}
 	try {
 		if (window.MODO_DEMO) {
 			await window.apiDemo("/api/v1/auth/yo");

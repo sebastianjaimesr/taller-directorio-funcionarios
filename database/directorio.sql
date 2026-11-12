@@ -10,7 +10,7 @@
 --       con las tablas usuarios y funcionarios.
 --
 --  Usuarios que crea este script (para iniciar sesión en la app):
---    usuario: admin      contraseña: Admin123*
+--    usuario: campus2023 contraseña: campus2023
 --    usuario: consulta   contraseña: Consulta123*
 --
 --  Las contraseñas NO se guardan en texto plano: se guarda su hash BCrypt.
@@ -38,10 +38,15 @@ CREATE TABLE IF NOT EXISTS usuarios (
 	CONSTRAINT uk_usuarios_usuario UNIQUE (usuario)
 ) ENGINE = InnoDB;
 
+-- Si ya tenías el usuario anterior "admin", se renombra a campus2023 con la nueva clave.
+UPDATE usuarios
+SET usuario = 'campus2023', clave = '$2a$10$IPF/cLc.Qty7HtzllCe82uQoRchOlnBXTMhbIodUOHJhzqAa1gCF.'
+WHERE usuario = 'admin';
+
 -- INSERT IGNORE: si el usuario ya existe, no lo duplica ni da error.
 INSERT IGNORE INTO usuarios (usuario, clave, nombre, rol, activo) VALUES
-	('admin',    '$2a$10$HpglLOJ58e9GYFj70CCqaecxq4T8uyrcfupPSHq/9ah.C98VHimMm', 'Administrador',    'ADMIN',   b'1'),
-	('consulta', '$2a$10$Z0UglOQgkN3kN.tS7QeTjOEcAb1hc5RCrC1qNccBefyGUR6hYSVh.', 'Usuario Consulta', 'USUARIO', b'1');
+	('campus2023', '$2a$10$IPF/cLc.Qty7HtzllCe82uQoRchOlnBXTMhbIodUOHJhzqAa1gCF.', 'Administrador',    'ADMIN',   b'1'),
+	('consulta',   '$2a$10$Z0UglOQgkN3kN.tS7QeTjOEcAb1hc5RCrC1qNccBefyGUR6hYSVh.', 'Usuario Consulta', 'USUARIO', b'1');
 
 -- ---------------------------------------------------------------------
 -- Funcionarios del directorio
@@ -79,7 +84,7 @@ WHERE NOT EXISTS (SELECT 1 FROM funcionarios);
 -- INSERT INTO usuarios (usuario, clave, nombre, rol) VALUES ('juan', '$2a$10$...hash...', 'Juan Pérez', 'USUARIO');
 
 -- Cambiar la contraseña de un usuario:
--- UPDATE usuarios SET clave = '$2a$10$...hash...' WHERE usuario = 'admin';
+-- UPDATE usuarios SET clave = '$2a$10$...hash...' WHERE usuario = 'campus2023';
 
 -- Ver funcionarios:
 -- SELECT * FROM funcionarios ORDER BY id;

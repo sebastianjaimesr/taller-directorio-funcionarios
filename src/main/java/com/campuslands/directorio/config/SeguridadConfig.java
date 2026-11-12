@@ -14,10 +14,17 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 import com.campuslands.directorio.repository.UsuarioRepository;
+import com.campuslands.directorio.security.IntentosLogin;
 
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -27,6 +34,7 @@ import tools.jackson.databind.json.JsonMapper;
  * <li>Público: la página de login, sus estilos/scripts y el endpoint de inicio de sesión.</li>
  * <li>Todo lo demás (la app y la API de funcionarios) exige haber iniciado sesión.</li>
  * <li>La sesión se guarda en una cookie (JSESSIONID) que el navegador envía sola.</li>
+ * <li>Tras 3 intentos fallidos el login se bloquea 5 minutos y la página va a error.html.</li>
  * </ul>
  */
 @Configuration
@@ -41,12 +49,14 @@ public class SeguridadConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filtroSeguridad(HttpSecurity http, UsuarioRepository usuarios) throws Exception {
+	public SecurityFilterChain filtroSeguridad(HttpSecurity http, UsuarioRepository usuarios, IntentosLogin intentos)
+			throws Exception {
 		http
 				.authorizeHttpRequests(reglas -> reglas
-						.requestMatchers("/login.html", "/css/**", "/js/login.js", "/js/demo.js", "/img/**",
-								"/favicon.svg", "/error")
+						.requestMatchers("/login.html", "/error.html", "/css/**", "/js/login.js", "/js/error.js",
+								"/js/demo.js", "/img/**", "/favicon.svg", "/error")
 						.permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/v1/auth/estado").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 						.anyRequest().authenticated())
 
@@ -57,6 +67,7 @@ public class SeguridadConfig {
 						.usernameParameter("usuario")
 						.passwordParameter("clave")
 						.successHandler((peticion, respuesta, autenticacion) -> {
+							intentos.reiniciar(peticion);
 							String nombre = usuarios.findByUsuarioIgnoreCase(autenticacion.getName())
 									.map(u -> u.getNombre())
 									.orElse(autenticacion.getName());
@@ -64,11 +75,38 @@ public class SeguridadConfig {
 									Map.of("usuario", autenticacion.getName(), "nombre", nombre));
 						})
 						.failureHandler((peticion, respuesta, error) -> {
+							int restantes = intentos.registrarFallo(peticion);
+							if (restantes == 0) {
+								escribirBloqueo(respuesta, intentos.segundosBloqueo(peticion));
+								return;
+							}
 							String mensaje = error instanceof DisabledException
 									? "Tu usuario está desactivado. Contacta al administrador."
 									: "Usuario o contraseña incorrectos.";
-							escribir(respuesta, HttpStatus.UNAUTHORIZED, Map.of("mensaje", mensaje));
+							mensaje += restantes == 1 ? " Te queda 1 intento." : " Te quedan " + restantes + " intentos.";
+							escribir(respuesta, HttpStatus.UNAUTHORIZED,
+									Map.of("mensaje", mensaje, "intentosRestantes", restantes));
 						}))
+
+				// Si el navegador está bloqueado, ni siquiera se revisa la contraseña.
+				.addFilterBefore(new OncePerRequestFilter() {
+					@Override
+					protected void doFilterInternal(HttpServletRequest peticion, HttpServletResponse respuesta,
+							FilterChain cadena) throws ServletException, IOException {
+						long segundos = intentos.segundosBloqueo(peticion);
+						if (segundos > 0) {
+							escribirBloqueo(respuesta, segundos);
+							return;
+						}
+						cadena.doFilter(peticion, respuesta);
+					}
+
+					@Override
+					protected boolean shouldNotFilter(HttpServletRequest peticion) {
+						return !("POST".equals(peticion.getMethod())
+								&& peticion.getRequestURI().equals(peticion.getContextPath() + "/api/v1/auth/login"));
+					}
+				}, UsernamePasswordAuthenticationFilter.class)
 
 				.logout(salida -> salida
 						.logoutUrl("/api/v1/auth/logout")
@@ -93,7 +131,15 @@ public class SeguridadConfig {
 		return http.build();
 	}
 
-	private void escribir(HttpServletResponse respuesta, HttpStatus estado, Map<String, String> cuerpo)
+	/** 423 Locked: demasiados intentos; login.js redirige a error.html. */
+	private void escribirBloqueo(HttpServletResponse respuesta, long segundos) throws IOException {
+		escribir(respuesta, HttpStatus.LOCKED, Map.of(
+				"mensaje", "Demasiados intentos fallidos. Intenta de nuevo más tarde.",
+				"bloqueado", true,
+				"segundos", segundos));
+	}
+
+	private void escribir(HttpServletResponse respuesta, HttpStatus estado, Map<String, ?> cuerpo)
 			throws IOException {
 		respuesta.setStatus(estado.value());
 		respuesta.setContentType(MediaType.APPLICATION_JSON_VALUE);

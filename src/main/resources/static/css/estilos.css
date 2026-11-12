@@ -449,6 +449,96 @@ input.invalido {
 }
 
 /* =========================================================
+   Página de bloqueo (error.html)
+   ========================================================= */
+.pagina-error {
+	display: grid;
+	place-items: center;
+	min-height: 100vh;
+	padding: 1.5rem;
+	background:
+		radial-gradient(circle at 20% 15%, rgba(220, 38, 38, .08), transparent 40%),
+		radial-gradient(circle at 80% 85%, rgba(79, 70, 229, .10), transparent 40%),
+		var(--fondo);
+}
+
+.error-tarjeta {
+	width: 100%;
+	max-width: 440px;
+	padding: 2.5rem 2rem 2rem;
+	text-align: center;
+	background: var(--superficie);
+	border: 1px solid var(--borde);
+	border-radius: 18px;
+	box-shadow: var(--sombra-alta);
+	animation: aparecer .25s ease-out;
+}
+
+.error-icono {
+	display: inline-grid;
+	place-items: center;
+	width: 68px;
+	height: 68px;
+	margin-bottom: 1.25rem;
+	border-radius: 50%;
+	background: var(--peligro-suave);
+	color: var(--peligro);
+	box-shadow: 0 0 0 8px rgba(220, 38, 38, .06);
+}
+
+.error-icono svg {
+	width: 30px;
+	height: 30px;
+}
+
+.error-codigo {
+	margin: 0 0 0.4rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--peligro);
+}
+
+.error-tarjeta h1 {
+	font-size: 1.5rem;
+	margin-bottom: 0.75rem;
+}
+
+.error-tarjeta .texto-suave {
+	font-size: 0.92rem;
+}
+
+.error-contador {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+	margin: 1.5rem 0;
+	padding: 1rem;
+	border-radius: var(--radio);
+	background: #f8fafc;
+	border: 1px solid var(--borde);
+	font-size: 0.85rem;
+	color: var(--suave);
+}
+
+.error-contador strong {
+	font-size: 2rem;
+	font-variant-numeric: tabular-nums;
+	color: var(--texto);
+}
+
+a.boton {
+	text-decoration: none;
+}
+
+.boton.deshabilitado {
+	opacity: .5;
+	pointer-events: none;
+	cursor: not-allowed;
+}
+
+/* =========================================================
    Aplicación (directorio)
    ========================================================= */
 .app {
